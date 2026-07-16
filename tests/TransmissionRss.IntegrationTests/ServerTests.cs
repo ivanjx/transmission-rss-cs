@@ -52,7 +52,7 @@ public sealed class ServerTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, health.StatusCode);
         Assert.Equal(HttpStatusCode.OK, dashboard.StatusCode);
-        Assert.Contains("Feeds in. Torrents out.", html);
+        Assert.Contains("RSS feeds and rules", html);
         Assert.Contains("No feeds yet.", html);
         Assert.DoesNotContain("Activity", html);
         Assert.Contains("<link rel=\"icon\" href=\"/favicon.svg\" type=\"image/svg+xml\"", html);
