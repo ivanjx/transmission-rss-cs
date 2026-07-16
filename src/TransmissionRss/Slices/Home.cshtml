@@ -1,0 +1,95 @@
+@inherits RazorSlice<DashboardModel>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Transmission RSS</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/"><span class="mark">TR</span><strong>Transmission RSS</strong></a>
+        <div class="top-actions"><a class="button secondary" href="/downloads">Downloads</a><form method="post" action="/poll"><button class="button secondary" type="submit"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" /></svg>Poll now</button></form></div>
+    </header>
+    <main class="shell">
+        @if (!string.IsNullOrWhiteSpace(Model.Notice))
+        {
+            <div class="notice">@Model.Notice</div>
+        }
+        <div class="grid">
+            <section class="panel span-two">
+                <div class="section-heading">
+                    <div><p class="eyebrow">FEEDS</p><h2>RSS feeds and rules</h2></div>
+                    <a class="button" href="/feeds/new"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>Add feed</a>
+                </div>
+                @if (Model.Feeds.Count == 0)
+                {
+                    <div class="empty"><strong>No feeds yet.</strong><p>Add an RSS feed, then create one or more matching rules inside it.</p></div>
+                }
+                else
+                {
+                    <div class="feed-list">
+                    @foreach (var feed in Model.Feeds)
+                    {
+                        <article class="feed-card">
+                            <div class="feed-heading">
+                                <div><strong>@feed.Url</strong><small>@feed.Rules.Count rule@(feed.Rules.Count == 1 ? string.Empty : "s") · link field: @feed.LinkField</small></div>
+                                <div class="section-heading-actions"><a class="button secondary" href="/feeds/@feed.Id/rules/new">Add rule</a><a class="button secondary" href="/feeds/@feed.Id">Edit feed</a></div>
+                            </div>
+                            @if (feed.Rules.Count == 0)
+                            {
+                                <div class="empty compact"><strong>No rules in this feed.</strong><p>Add a rule to start matching titles.</p></div>
+                            }
+                            else
+                            {
+                                <div class="rule-list">
+                                @foreach (var rule in feed.Rules)
+                                {
+                                    <a class="rule" href="/rules/@rule.Id">
+                                        <span class="status @(rule.Enabled ? "on" : "off")"></span>
+                                        <span class="rule-main"><strong>@rule.Name</strong><small>@(rule.Includes.Count == 0 ? "All titles" : $"Includes: {string.Join(", ", rule.Includes)}")</small></span>
+                                        <span class="rule-meta">@(rule.LastCheckedAt is null ? "Not checked" : rule.LastCheckedAt.Value.ToLocalTime().ToString("g"))</span>
+                                        <svg class="icon rule-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace(rule.LastStatus))
+                                    {
+                                        <p class="last-status">@rule.LastStatus</p>
+                                    }
+                                }
+                                </div>
+                            }
+                        </article>
+                    }
+                    </div>
+                }
+            </section>
+
+            <section class="panel">
+                <p class="eyebrow">CONNECTION</p><h2>Transmission</h2>
+                <form method="post" action="/settings" class="form">
+                    <label>RPC URL<input name="transmissionUrl" type="url" required value="@Model.Settings.TransmissionUrl" /></label>
+                    <div class="fields-two">
+                        <label>Username<input name="username" autocomplete="username" value="@Model.Settings.Username" /></label>
+                        <label>Password<input name="password" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved password" /></label>
+                    </div>
+                    <div class="fields-two">
+                        <label>Poll every (sec)<input name="pollInterval" type="number" min="10" max="86400" value="@Model.Settings.PollIntervalSeconds" /></label>
+                        <label>Timeout (sec)<input name="timeout" type="number" min="1" max="300" value="@Model.Settings.RequestTimeoutSeconds" /></label>
+                    </div>
+                    @if (Model.Settings.AddPaused)
+                    {
+                        <label class="check"><input name="addPaused" type="checkbox" checked /> Add torrents paused by default</label>
+                    }
+                    else
+                    {
+                        <label class="check"><input name="addPaused" type="checkbox" /> Add torrents paused by default</label>
+                    }
+                    <button class="button" type="submit"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>Save settings</button>
+                </form>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,57 @@
+@inherits RazorSlice<RuleEditorModel>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(Model.IsNew ? "Add rule" : "Edit rule") · Transmission RSS</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+    <header class="topbar"><a class="brand" href="/"><span class="mark">TR</span><strong>Transmission RSS</strong></a></header>
+    <main class="shell narrow">
+        <a class="back" href="/feeds/@Model.Feed.Id"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>Back to feed</a>
+        <section class="panel editor">
+            <p class="eyebrow">@(Model.IsNew ? "NEW RULE" : "EDIT RULE")</p>
+            <h1>@(Model.IsNew ? "Match titles" : Model.Rule.Name)</h1>
+            <p class="feed-context">For @Model.Feed.Url</p>
+            @if (!string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="error">@Model.Error</div>
+            }
+            <form id="rule-form" method="post" action="@(Model.IsNew ? $"/feeds/{Model.Feed.Id}/rules" : $"/rules/{Model.Rule.Id}")" class="form">
+                <label>Name<input name="name" required maxlength="100" value="@Model.Rule.Name" placeholder="Girls und Panzer" /></label>
+                <div class="fields-two">
+                    <label>Must include<textarea name="includes" rows="6" placeholder="submarine&#10;panzer&#10;mllsd">@string.Join("\n", Model.Rule.Includes)</textarea><small>One term per line. Every term must occur; matching ignores case.</small></label>
+                    <label>Must exclude<textarea name="excludes" rows="6" placeholder="dubbed&#10;720p">@string.Join("\n", Model.Rule.Excludes)</textarea><small>One term per line. A title is skipped if any term occurs.</small></label>
+                </div>
+                <label>Download directory<input name="downloadDirectory" value="@Model.Rule.DownloadDirectory" placeholder="/downloads/shows" /><small>Optional Transmission-side path for this rule.</small></label>
+                <label>Add mode<select name="addPaused">
+                    @if (Model.Rule.AddPaused is null) { <option value="" selected>Use global default</option> } else { <option value="">Use global default</option> }
+                    @if (Model.Rule.AddPaused is true) { <option value="true" selected>Paused</option> } else { <option value="true">Paused</option> }
+                    @if (Model.Rule.AddPaused is false) { <option value="false" selected>Start immediately</option> } else { <option value="false">Start immediately</option> }
+                </select></label>
+                @if (Model.Rule.Enabled)
+                {
+                    <label class="check"><input name="enabled" type="checkbox" checked /> Rule enabled</label>
+                }
+                else
+                {
+                    <label class="check"><input name="enabled" type="checkbox" /> Rule enabled</label>
+                }
+            </form>
+            <div class="editor-actions">
+                <button class="button" type="submit" form="rule-form">Save rule</button>
+                <a class="button secondary" href="/feeds/@Model.Feed.Id">Cancel</a>
+                @if (!Model.IsNew)
+                {
+                    <form method="post" action="/rules/@Model.Rule.Id/delete" onsubmit="return confirm('Delete this rule and its downloaded-item history?')">
+                        <button class="button danger" type="submit">Delete rule</button>
+                    </form>
+                }
+            </div>
+        </section>
+    </main>
+</body>
+</html>

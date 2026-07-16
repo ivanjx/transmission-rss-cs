@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/TransmissionRss/TransmissionRss.csproj" />
+  <Project Path="tests/TransmissionRss.IntegrationTests/TransmissionRss.IntegrationTests.csproj" />
+</Solution>

@@ -1,0 +1,12 @@
+services:
+  transmission-rss:
+    image: ghcr.io/ivanjx/transmission-rss-cs:latest
+    container_name: transmission-rss
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - transmission-rss-data:/data
+
+volumes:
+  transmission-rss-data:

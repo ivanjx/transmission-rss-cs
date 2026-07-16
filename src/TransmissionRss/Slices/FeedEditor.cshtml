@@ -1,0 +1,63 @@
+@inherits RazorSlice<FeedEditorModel>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(Model.IsNew ? "Add feed" : "Edit feed") · Transmission RSS</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+    <header class="topbar"><a class="brand" href="/"><span class="mark">TR</span><strong>Transmission RSS</strong></a></header>
+    <main class="shell narrow">
+        <a class="back" href="/"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>Back to dashboard</a>
+        @if (!Model.IsNew && !string.IsNullOrWhiteSpace(Model.Error))
+        {
+            <div class="notice">@Model.Error</div>
+        }
+        <section class="panel editor">
+            <p class="eyebrow">@(Model.IsNew ? "NEW FEED" : "EDIT FEED")</p>
+            <h1>@(Model.IsNew ? "Add an RSS feed" : "Feed settings")</h1>
+            <p>The feed is fetched once per polling cycle and shared by all of its rules.</p>
+            @if (Model.IsNew && !string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="error">@Model.Error</div>
+            }
+            <form method="post" action="@(Model.IsNew ? "/feeds" : $"/feeds/{Model.Feed.Id}")" class="form">
+                <label>RSS or Atom URL<input name="url" type="url" required value="@Model.Feed.Url" placeholder="https://example.com/feed.xml" /></label>
+                <label>Link field<input name="linkField" value="@Model.Feed.LinkField" placeholder="link" /><small>Use a custom feed field such as nyaa_infohash when needed.</small></label>
+                @if (Model.Feed.SeenByGuid)
+                {
+                    <label class="check"><input name="seenByGuid" type="checkbox" checked /> Deduplicate by GUID instead of torrent URL</label>
+                }
+                else
+                {
+                    <label class="check"><input name="seenByGuid" type="checkbox" /> Deduplicate by GUID instead of torrent URL</label>
+                }
+                <div class="actions"><button class="button" type="submit">Save feed</button><a class="button secondary" href="/">Cancel</a></div>
+            </form>
+            @if (!Model.IsNew)
+            {
+                <div class="feed-rules-heading"><h2>Rules</h2><a class="button secondary" href="/feeds/@Model.Feed.Id/rules/new">Add rule</a></div>
+                @if (Model.Feed.Rules.Count == 0)
+                {
+                    <div class="empty compact"><strong>No rules yet.</strong><p>Add a case-insensitive title match for this feed.</p></div>
+                }
+                else
+                {
+                    <div class="rule-list">
+                    @foreach (var rule in Model.Feed.Rules)
+                    {
+                        <a class="rule" href="/rules/@rule.Id"><span class="status @(rule.Enabled ? "on" : "off")"></span><span class="rule-main"><strong>@rule.Name</strong><small>@rule.DownloadDirectory</small></span><svg class="icon rule-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg></a>
+                    }
+                    </div>
+                }
+                <form method="post" action="/feeds/@Model.Feed.Id/delete" class="danger-zone" onsubmit="return confirm('Delete this feed, all of its rules, and their downloaded-item history?')">
+                    <button class="button danger" type="submit">Delete feed</button>
+                </form>
+            }
+        </section>
+    </main>
+</body>
+</html>
