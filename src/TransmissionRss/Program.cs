@@ -1,5 +1,11 @@
 using TransmissionRss;
 
+if (args is ["--healthcheck"])
+{
+    Environment.ExitCode = await DockerHealthProbe.IsHealthyAsync() ? 0 : 1;
+    return;
+}
+
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.Services.AddSingleton<AppRepository>();
 builder.Services.AddSingleton<PollSignal>();
@@ -39,11 +45,51 @@ app.MapPost("/rules/{id}/delete", Endpoints.DeleteRuleAsync);
 app.MapPost("/downloads/delete", Endpoints.DeleteDownloadAsync);
 app.MapPost("/downloads/clear", Endpoints.ClearDownloadsAsync);
 app.MapPost("/poll", Endpoints.PollNow);
-app.MapGet("/health", () => Results.Ok());
+app.MapGet("/health", Endpoints.HealthAsync);
 app.Run();
 
 public static class Endpoints
 {
+    private const int HealthCheckTimeoutSeconds = 10;
+
+    public static async Task<IResult> HealthAsync(
+        HttpContext context,
+        AppRepository repository,
+        IHttpClientFactory httpClientFactory)
+    {
+        var feedsResult = await repository.GetFeedsAsync(cancellationToken: context.RequestAborted);
+
+        if (feedsResult is not RepositoryResult<IReadOnlyList<Feed>> feeds)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (feeds.Value.Count == 0)
+        {
+            return Results.Ok();
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        timeout.CancelAfter(TimeSpan.FromSeconds(HealthCheckTimeoutSeconds));
+        var checks = feeds.Value
+            .Select(feed => IsFeedReachableAsync(feed.Url, httpClientFactory, timeout.Token))
+            .ToList();
+
+        while (checks.Count > 0)
+        {
+            var completed = await Task.WhenAny(checks);
+            checks.Remove(completed);
+
+            if (await completed)
+            {
+                await timeout.CancelAsync();
+                return Results.Ok();
+            }
+        }
+
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
     public static async Task<IResult> HomeAsync(HttpContext context, AppRepository repository)
     {
         var settingsResult = await repository.GetSettingsAsync(context.RequestAborted);
@@ -366,6 +412,40 @@ public static class Endpoints
         "false" => false,
         _ => null
     };
+
+    private static async Task<bool> IsFeedReachableAsync(
+        string url,
+        IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = httpClientFactory.CreateClient(nameof(HealthAsync));
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
+        {
+            return false;
+        }
+    }
+}
+
+public static class DockerHealthProbe
+{
+    public static async Task<bool> IsHealthyAsync()
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            using var response = await client.GetAsync("http://127.0.0.1:8080/health");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
+        {
+            return false;
+        }
+    }
 }
 
 public partial class Program;

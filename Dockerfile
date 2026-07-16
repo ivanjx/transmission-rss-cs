@@ -15,4 +15,5 @@ VOLUME ["/data"]
 EXPOSE 8080
 COPY --from=build --chown=$APP_UID:$APP_UID /app/ ./
 USER $APP_UID
+HEALTHCHECK --interval=30s --timeout=20s --start-period=10s --retries=3 CMD ["./TransmissionRss", "--healthcheck"]
 ENTRYPOINT ["./TransmissionRss"]

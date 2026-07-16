@@ -11,6 +11,7 @@ namespace TransmissionRss.IntegrationTests;
 public sealed class ServerTests : IAsyncLifetime
 {
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"transmission-rss-{Guid.NewGuid():N}.db");
+    private readonly FeedHealthHandler _feedHealthHandler = new();
     private TestServerFactory _factory = null!;
     private HttpClient _client = null!;
 
@@ -24,7 +25,7 @@ public sealed class ServerTests : IAsyncLifetime
             await command.ExecuteNonQueryAsync();
         }
 
-        _factory = new TestServerFactory(_databasePath);
+        _factory = new TestServerFactory(_databasePath, _feedHealthHandler);
         _client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
     }
 
@@ -66,6 +67,25 @@ public sealed class ServerTests : IAsyncLifetime
         var favicon = await _client.GetAsync("/favicon.svg");
         Assert.Equal(HttpStatusCode.OK, favicon.StatusCode);
         Assert.Equal("image/svg+xml", favicon.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task HealthRequiresAtLeastOneConfiguredFeedToBeReachable()
+    {
+        var repository = _factory.Services.GetRequiredService<AppRepository>();
+        var unavailable = new Feed("unavailable", "https://unavailable.example/rss", "link", false, []);
+        var reachable = new Feed("reachable", "https://reachable.example/rss", "link", false, []);
+        Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(unavailable));
+        Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(reachable));
+        _feedHealthHandler.SetStatus(unavailable.Url, HttpStatusCode.ServiceUnavailable);
+        _feedHealthHandler.SetStatus(reachable.Url, HttpStatusCode.OK);
+
+        var healthy = await _client.GetAsync("/health");
+        Assert.Equal(HttpStatusCode.OK, healthy.StatusCode);
+
+        _feedHealthHandler.SetStatus(reachable.Url, HttpStatusCode.BadGateway);
+        var unhealthy = await _client.GetAsync("/health");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, unhealthy.StatusCode);
     }
 
     [Fact]
@@ -246,7 +266,8 @@ public sealed class ServerTests : IAsyncLifetime
     private Task<HttpResponseMessage> PostFormAsync(string path, Dictionary<string, string> values) =>
         _client.PostAsync(path, new FormUrlEncodedContent(values));
 
-    private sealed class TestServerFactory(string databasePath) : WebApplicationFactory<Program>
+    private sealed class TestServerFactory(string databasePath, FeedHealthHandler feedHealthHandler) :
+        WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -255,6 +276,31 @@ public sealed class ServerTests : IAsyncLifetime
                 ["Database:Path"] = databasePath,
                 ["Polling:Disabled"] = "true"
             }));
+
+            builder.ConfigureServices(services => services.AddSingleton<IHttpClientFactory>(
+                new StubHttpClientFactory(feedHealthHandler)));
+        }
+    }
+
+    private sealed class StubHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
+
+    private sealed class FeedHealthHandler : HttpMessageHandler
+    {
+        private readonly Dictionary<string, HttpStatusCode> _statuses = [];
+
+        public void SetStatus(string url, HttpStatusCode status) => _statuses[url] = status;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var status = request.RequestUri is not null && _statuses.TryGetValue(request.RequestUri.ToString(), out var value) ?
+                value :
+                HttpStatusCode.NotFound;
+            return Task.FromResult(new HttpResponseMessage(status));
         }
     }
 }
