@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-aot AS build
 WORKDIR /source
 COPY TransmissionRss.slnx ./
 COPY src/TransmissionRss/TransmissionRss.csproj src/TransmissionRss/
