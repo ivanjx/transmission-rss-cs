@@ -18,7 +18,7 @@ public sealed class TransmissionClientTests
             NullLogger<TransmissionClient>.Instance);
         var settings = new AppSettings("http://transmission:9091/transmission/rpc", "alice", "secret", 60, 5, false);
         var rule = new FeedRule("rule", "feed", "Shows", [], [],
-            "/downloads/shows", true, true, null, string.Empty);
+            "/downloads/shows", true, true);
 
         var result = await client.AddTorrentAsync(
             settings,
@@ -50,7 +50,7 @@ public sealed class TransmissionClientTests
             NullLogger<TransmissionClient>.Instance);
         var settings = new AppSettings("http://transmission:9091/transmission/rpc", string.Empty, string.Empty, 60, 5, false);
         var rule = new FeedRule("rule", "feed", "Shows", [], [],
-            string.Empty, null, true, null, string.Empty);
+            string.Empty, null, true);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
@@ -71,7 +71,7 @@ public sealed class TransmissionClientTests
             NullLogger<TransmissionClient>.Instance);
         var settings = new AppSettings("http://transmission:9091/transmission/rpc", string.Empty, string.Empty, 60, 5, false);
         var rule = new FeedRule("rule", "feed", "Shows", [], [],
-            string.Empty, null, true, null, string.Empty);
+            string.Empty, null, true);
 
         var result = await client.AddTorrentAsync(
             settings,

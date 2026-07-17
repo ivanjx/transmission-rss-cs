@@ -122,12 +122,14 @@ public sealed class ServerTests : IAsyncLifetime
         var panzer = feed.Rules.Single(rule => rule.Name == "Girls und Panzer");
         Assert.Equal(["submarine", "panzer", "mllsd"], panzer.Includes);
         Assert.Equal(["dubbed", "720p"], panzer.Excludes);
+        Assert.IsType<SuccessRepositoryResult>(await repository.SetFeedCheckedItemCountAsync(feedId, 75));
 
         var html = await _client.GetStringAsync("/");
         Assert.Contains("https://nyaa.si/?page=rss", html);
         Assert.Contains("2 rules", html);
         Assert.Contains("Girls und Panzer", html);
         Assert.Contains("Link Click", html);
+        Assert.Equal(1, html.Split("Checked 75 items.").Length - 1);
     }
 
     [Fact]
@@ -186,7 +188,7 @@ public sealed class ServerTests : IAsyncLifetime
         var repository = _factory.Services.GetRequiredService<AppRepository>();
         var feed = new Feed("feed", "https://nyaa.si/?page=rss", "link", false, []);
         var rule = new FeedRule("rule", feed.Id, "Nyaa weekly", ["1080p"], ["CAM"],
-            "/downloads/anime", null, true, null, string.Empty);
+            "/downloads/anime", null, true);
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(feed));
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveRuleAsync(rule));
         Assert.IsType<SuccessRepositoryResult>(await repository.MarkSeenAsync(
@@ -208,7 +210,7 @@ public sealed class ServerTests : IAsyncLifetime
         var repository = _factory.Services.GetRequiredService<AppRepository>();
         var feed = new Feed("feed-delete", "https://example.com/rss", "link", false, []);
         var rule = new FeedRule("rule-delete", feed.Id, "Delete me", [], [], string.Empty,
-            null, true, null, string.Empty);
+            null, true);
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(feed));
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveRuleAsync(rule));
         Assert.IsType<SuccessRepositoryResult>(await repository.MarkSeenAsync(
@@ -227,7 +229,7 @@ public sealed class ServerTests : IAsyncLifetime
         var repository = _factory.Services.GetRequiredService<AppRepository>();
         var feed = new Feed("encoded-feed", "https://example.com/rss?x=<script>", "link", false, []);
         var rule = new FeedRule("encoded-rule", feed.Id, "<script>alert('rule')</script>", [], [],
-            string.Empty, null, true, null, string.Empty);
+            string.Empty, null, true);
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(feed));
         Assert.IsType<SuccessRepositoryResult>(await repository.SaveRuleAsync(rule));
 

@@ -32,5 +32,5 @@ public sealed class TitleMatcherTests
     }
 
     private static FeedRule CreateRule(IReadOnlyList<string> includes, IReadOnlyList<string> excludes) =>
-        new("rule", "feed", "Rule", includes, excludes, string.Empty, null, true, null, string.Empty);
+        new("rule", "feed", "Rule", includes, excludes, string.Empty, null, true);
 }

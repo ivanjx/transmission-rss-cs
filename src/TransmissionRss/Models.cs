@@ -13,7 +13,8 @@ public sealed record Feed(
     string Url,
     string LinkField,
     bool SeenByGuid,
-    IReadOnlyList<FeedRule> Rules);
+    IReadOnlyList<FeedRule> Rules,
+    int? LastCheckedItemCount = null);
 
 public sealed record FeedRule(
     string Id,
@@ -23,9 +24,7 @@ public sealed record FeedRule(
     IReadOnlyList<string> Excludes,
     string DownloadDirectory,
     bool? AddPaused,
-    bool Enabled,
-    DateTimeOffset? LastCheckedAt,
-    string LastStatus);
+    bool Enabled);
 
 public sealed record DownloadedTorrent(
     string RuleId,

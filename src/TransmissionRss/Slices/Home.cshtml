@@ -52,16 +52,15 @@
                                         <span class="rule-main">
                                             <strong>@rule.Name</strong>
                                             <small>@(rule.Includes.Count == 0 ? "All titles" : $"Includes: {string.Join(", ", rule.Includes)}")</small>
-                                            @if (!string.IsNullOrWhiteSpace(rule.LastStatus))
-                                            {
-                                                <small class="last-status">@rule.LastStatus</small>
-                                            }
                                         </span>
-                                        <span class="rule-meta">@(rule.LastCheckedAt is null ? "Not checked" : rule.LastCheckedAt.Value.ToLocalTime().ToString("g"))</span>
                                         <svg class="icon rule-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
                                     </a>
                                 }
                                 </div>
+                            }
+                            @if (feed.LastCheckedItemCount is not null)
+                            {
+                                <p class="feed-status">Checked @feed.LastCheckedItemCount item@(feed.LastCheckedItemCount == 1 ? string.Empty : "s").</p>
                             }
                         </article>
                     }

@@ -113,11 +113,7 @@ public sealed class PollingService(
 
             if (feedResult is not FeedEntriesResult entries)
             {
-                foreach (var rule in feed.Rules)
-                {
-                    await repository.SetRuleStatusAsync(rule.Id, "Error: feed could not be read.", cancellationToken);
-                }
-
+                logger.LogError("Feed {FeedUrl} could not be read", feed.Url);
                 return new ErrorServiceResult();
             }
 
@@ -127,11 +123,19 @@ public sealed class PollingService(
 
                 if (result is not SuccessServiceResult)
                 {
+                    logger.LogError("Rule {RuleName} could not be applied to feed {FeedUrl}", rule.Name, feed.Url);
                     return result;
                 }
             }
 
-            return new SuccessServiceResult();
+            var checkedResult = await repository.SetFeedCheckedItemCountAsync(
+                feed.Id, entries.Entries.Count, cancellationToken);
+            return checkedResult switch
+            {
+                SuccessRepositoryResult => new SuccessServiceResult(),
+                CanceledRepositoryResult => new CanceledServiceResult(),
+                _ => new ErrorServiceResult()
+            };
         }
         catch (OperationCanceledException)
         {
@@ -150,8 +154,6 @@ public sealed class PollingService(
         IReadOnlyList<FeedEntry> entries,
         CancellationToken cancellationToken)
     {
-        var added = 0;
-
         foreach (var entry in entries)
         {
             if (!TitleMatcher.Matches(rule, entry.Title))
@@ -198,18 +200,10 @@ public sealed class PollingService(
                 return new ErrorServiceResult();
             }
 
-            added++;
             logger.LogInformation("Added {TorrentTitle} from rule {RuleName}", entry.Title, rule.Name);
         }
 
-        var statusResult = await repository.SetRuleStatusAsync(
-            rule.Id, $"Added {added}.", cancellationToken);
-        return statusResult switch
-        {
-            SuccessRepositoryResult => new SuccessServiceResult(),
-            CanceledRepositoryResult => new CanceledServiceResult(),
-            _ => new ErrorServiceResult()
-        };
+        return new SuccessServiceResult();
     }
 
 }

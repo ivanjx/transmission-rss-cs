@@ -136,7 +136,7 @@ public static class Endpoints
             RepositoryResult<Feed?> { Value: null } => Results.NotFound(),
             RepositoryResult<Feed?> feed => TransmissionRss.Slices.RuleEditor.Create(new(
                 feed.Value,
-                new FeedRule(string.Empty, feedId, string.Empty, [], [], string.Empty, null, true, null, string.Empty),
+                new FeedRule(string.Empty, feedId, string.Empty, [], [], string.Empty, null, true),
                 true,
                 null)),
             CanceledRepositoryResult => Results.StatusCode(StatusCodes.Status499ClientClosedRequest),
@@ -349,7 +349,7 @@ public static class Endpoints
         var form = await context.Request.ReadFormAsync(context.RequestAborted);
         var rule = new FeedRule(id, feedId, form["name"].ToString().Trim(), ParseTerms(form["includes"]),
             ParseTerms(form["excludes"]), form["downloadDirectory"].ToString().Trim(),
-            ParseNullableBool(form["addPaused"]), form.ContainsKey("enabled"), null, string.Empty);
+            ParseNullableBool(form["addPaused"]), form.ContainsKey("enabled"));
         var error = Validate(rule);
 
         if (error is not null)

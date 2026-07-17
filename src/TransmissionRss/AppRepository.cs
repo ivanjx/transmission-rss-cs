@@ -145,8 +145,7 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
             await using var connection = await OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = """
-                SELECT id, feed_id, name, includes, excludes, download_directory, add_paused, enabled,
-                    last_checked_at, last_status
+                SELECT id, feed_id, name, includes, excludes, download_directory, add_paused, enabled
                 FROM rules WHERE id = $id
                 """;
             command.Parameters.AddWithValue("$id", id);
@@ -161,9 +160,8 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
             await using var connection = await OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT INTO rules (id, feed_id, name, includes, excludes, download_directory, add_paused,
-                    enabled, last_checked_at, last_status)
-                VALUES ($id, $feed, $name, $includes, $excludes, $directory, $paused, $enabled, $checked, $status)
+                INSERT INTO rules (id, feed_id, name, includes, excludes, download_directory, add_paused, enabled)
+                VALUES ($id, $feed, $name, $includes, $excludes, $directory, $paused, $enabled)
                 ON CONFLICT(id) DO UPDATE SET feed_id = excluded.feed_id, name = excluded.name,
                     includes = excluded.includes, excludes = excluded.excludes,
                     download_directory = excluded.download_directory, add_paused = excluded.add_paused,
@@ -281,21 +279,20 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
             return new SuccessRepositoryResult();
         }, "Failed to clear downloaded torrent history", cancellationToken);
 
-    public Task<RepositoryResult> SetRuleStatusAsync(
-        string ruleId,
-        string status,
+    public Task<RepositoryResult> SetFeedCheckedItemCountAsync(
+        string feedId,
+        int itemCount,
         CancellationToken cancellationToken = default) =>
         ExecuteRepositoryAsync(async () =>
         {
             await using var connection = await OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE rules SET last_checked_at = $at, last_status = $status WHERE id = $id";
-            command.Parameters.AddWithValue("$id", ruleId);
-            command.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToString("O"));
-            command.Parameters.AddWithValue("$status", status);
+            command.CommandText = "UPDATE feeds SET last_checked_item_count = $count WHERE id = $id";
+            command.Parameters.AddWithValue("$id", feedId);
+            command.Parameters.AddWithValue("$count", itemCount);
             await command.ExecuteNonQueryAsync(cancellationToken);
             return new SuccessRepositoryResult();
-        }, $"Failed to update status for feed rule {ruleId}", cancellationToken);
+        }, $"Failed to update checked item count for feed {feedId}", cancellationToken);
 
     private async Task<IReadOnlyList<Feed>> ReadFeedsAsync(
         string? feedId,
@@ -306,9 +303,9 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT feeds.id, feeds.url, feeds.link_field, feeds.seen_by_guid,
+            SELECT feeds.id, feeds.url, feeds.link_field, feeds.seen_by_guid, feeds.last_checked_item_count,
                 rules.id, rules.feed_id, rules.name, rules.includes, rules.excludes, rules.download_directory,
-                rules.add_paused, rules.enabled, rules.last_checked_at, rules.last_status
+                rules.add_paused, rules.enabled
             FROM feeds
             LEFT JOIN rules ON rules.feed_id = feeds.id AND ($enabledOnly = 0 OR rules.enabled = 1)
             WHERE ($feedId IS NULL OR feeds.id = $feedId)
@@ -324,19 +321,21 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
 
             if (!builders.TryGetValue(id, out var builder))
             {
-                builder = new(id, reader.GetString(1), reader.GetString(2), reader.GetBoolean(3), []);
+                builder = new(id, reader.GetString(1), reader.GetString(2), reader.GetBoolean(3),
+                    reader.IsDBNull(4) ? null : reader.GetInt32(4), []);
                 builders.Add(id, builder);
             }
 
-            if (!reader.IsDBNull(4))
+            if (!reader.IsDBNull(5))
             {
-                builder.Rules.Add(ReadRule(reader, 4));
+                builder.Rules.Add(ReadRule(reader, 5));
             }
         }
 
         return builders.Values
             .Where(builder => !enabledRulesOnly || builder.Rules.Count > 0)
-            .Select(builder => new Feed(builder.Id, builder.Url, builder.LinkField, builder.SeenByGuid, builder.Rules))
+            .Select(builder => new Feed(builder.Id, builder.Url, builder.LinkField, builder.SeenByGuid,
+                builder.Rules, builder.LastCheckedItemCount))
             .ToList();
     }
 
@@ -367,14 +366,18 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
         return connection;
     }
 
-    private static async Task CreateCurrentSchemaAsync(SqliteConnection connection, CancellationToken cancellationToken) =>
+    private static async Task CreateCurrentSchemaAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
         await ExecuteAsync(connection, """
             PRAGMA foreign_keys = ON;
             CREATE TABLE IF NOT EXISTS feeds (
                 id TEXT PRIMARY KEY,
                 url TEXT NOT NULL,
                 link_field TEXT NOT NULL,
-                seen_by_guid INTEGER NOT NULL
+                seen_by_guid INTEGER NOT NULL,
+                last_checked_item_count INTEGER NULL
             );
             CREATE TABLE IF NOT EXISTS rules (
                 id TEXT PRIMARY KEY,
@@ -385,8 +388,6 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
                 download_directory TEXT NOT NULL,
                 add_paused INTEGER NULL,
                 enabled INTEGER NOT NULL,
-                last_checked_at TEXT NULL,
-                last_status TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_rules_feed_id ON rules(feed_id);
@@ -405,6 +406,32 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
             CREATE INDEX IF NOT EXISTS idx_seen_items_seen_at ON seen_items(seen_at DESC);
             DROP TABLE IF EXISTS activity;
             """, cancellationToken);
+
+        await EnsureColumnAsync(connection, "feeds", "last_checked_item_count", "INTEGER NULL", cancellationToken);
+    }
+
+    private static async Task EnsureColumnAsync(
+        SqliteConnection connection,
+        string table,
+        string column,
+        string definition,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({table})";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (reader.GetString(1) == column)
+            {
+                return;
+            }
+        }
+
+        await reader.DisposeAsync();
+        await ExecuteAsync(connection, $"ALTER TABLE {table} ADD COLUMN {column} {definition}", cancellationToken);
+    }
 
     private static async Task ExecuteAsync(
         SqliteConnection connection,
@@ -430,9 +457,7 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
         ParseTerms(reader.GetString(offset + 4)),
         reader.GetString(offset + 5),
         reader.IsDBNull(offset + 6) ? null : reader.GetBoolean(offset + 6),
-        reader.GetBoolean(offset + 7),
-        reader.IsDBNull(offset + 8) ? null : DateTimeOffset.Parse(reader.GetString(offset + 8)),
-        reader.GetString(offset + 9));
+        reader.GetBoolean(offset + 7));
 
     private static IReadOnlyList<string> ParseTerms(string value) => value
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -449,8 +474,6 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
         command.Parameters.AddWithValue("$directory", rule.DownloadDirectory);
         command.Parameters.AddWithValue("$paused", rule.AddPaused is null ? DBNull.Value : rule.AddPaused.Value);
         command.Parameters.AddWithValue("$enabled", rule.Enabled);
-        command.Parameters.AddWithValue("$checked", rule.LastCheckedAt?.ToString("O") ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("$status", rule.LastStatus);
     }
 
     private sealed record FeedBuilder(
@@ -458,6 +481,7 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
         string Url,
         string LinkField,
         bool SeenByGuid,
+        int? LastCheckedItemCount,
         List<FeedRule> Rules);
 
 }
