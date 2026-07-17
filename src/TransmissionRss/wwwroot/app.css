@@ -9,6 +9,7 @@ a { color:inherit; }
 .mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font-weight:900; letter-spacing:-1px; }
 .shell { max-width:1168px; margin:0 auto; padding:54px 24px 80px; }
 .narrow { max-width:790px; }
+.hero { margin-bottom:36px; }
 h1 { font-size:clamp(32px,5vw,54px); line-height:1.05; letter-spacing:-.045em; margin:5px 0 12px; }
 h2 { font-size:22px; letter-spacing:-.02em; margin:3px 0 20px; }
 p { color:var(--muted); margin:0; }
