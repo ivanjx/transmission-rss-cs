@@ -49,14 +49,17 @@
                                 {
                                     <a class="rule" href="/rules/@rule.Id">
                                         <span class="status @(rule.Enabled ? "on" : "off")"></span>
-                                        <span class="rule-main"><strong>@rule.Name</strong><small>@(rule.Includes.Count == 0 ? "All titles" : $"Includes: {string.Join(", ", rule.Includes)}")</small></span>
+                                        <span class="rule-main">
+                                            <strong>@rule.Name</strong>
+                                            <small>@(rule.Includes.Count == 0 ? "All titles" : $"Includes: {string.Join(", ", rule.Includes)}")</small>
+                                            @if (!string.IsNullOrWhiteSpace(rule.LastStatus))
+                                            {
+                                                <small class="last-status">@rule.LastStatus</small>
+                                            }
+                                        </span>
                                         <span class="rule-meta">@(rule.LastCheckedAt is null ? "Not checked" : rule.LastCheckedAt.Value.ToLocalTime().ToString("g"))</span>
                                         <svg class="icon rule-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
                                     </a>
-                                    @if (!string.IsNullOrWhiteSpace(rule.LastStatus))
-                                    {
-                                        <p class="last-status">@rule.LastStatus</p>
-                                    }
                                 }
                                 </div>
                             }

@@ -203,7 +203,7 @@ public sealed class PollingService(
         }
 
         var statusResult = await repository.SetRuleStatusAsync(
-            rule.Id, $"Checked {entries.Count} item(s), added {added}.", cancellationToken);
+            rule.Id, $"Added {added}.", cancellationToken);
         return statusResult switch
         {
             SuccessRepositoryResult => new SuccessServiceResult(),

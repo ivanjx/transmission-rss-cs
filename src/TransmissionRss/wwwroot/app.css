@@ -40,7 +40,6 @@ p { color:var(--muted); margin:0; }
 .rule-main { display:grid; min-width:0; }
 .rule-main small { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .rule-meta,.last-status { color:var(--muted); font-size:12px; }
-.last-status { margin:4px 33px 10px; }
 .status { display:inline-block; width:8px; height:8px; border-radius:50%; }
 .status.on { background:#4ade80; box-shadow:0 0 10px #4ade8066; }
 .status.off { background:#64748b; }
