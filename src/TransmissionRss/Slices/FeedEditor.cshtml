@@ -26,7 +26,7 @@
             }
             <form method="post" action="@(Model.IsNew ? "/feeds" : $"/feeds/{Model.Feed.Id}")" class="form">
                 <label>RSS or Atom URL<input name="url" type="url" required value="@Model.Feed.Url" placeholder="https://example.com/feed.xml" /></label>
-                <label>Link field<input name="linkField" value="@Model.Feed.LinkField" placeholder="link" /><small>Use a custom feed field such as nyaa_infohash when needed.</small></label>
+                <label>Link field<input name="linkField" value="@Model.Feed.LinkField" placeholder="link" /><small>Use a custom feed field such as nyaa:infoHash when needed.</small></label>
                 @if (Model.Feed.SeenByGuid)
                 {
                     <label class="check"><input name="seenByGuid" type="checkbox" checked /> Deduplicate by GUID instead of torrent URL</label>

@@ -44,6 +44,7 @@ app.MapPost("/rules/{id}", Endpoints.UpdateRuleAsync);
 app.MapPost("/rules/{id}/delete", Endpoints.DeleteRuleAsync);
 app.MapPost("/downloads/delete", Endpoints.DeleteDownloadAsync);
 app.MapPost("/downloads/clear", Endpoints.ClearDownloadsAsync);
+app.MapGet("/poll", Endpoints.PollNow);
 app.MapPost("/poll", Endpoints.PollNow);
 app.MapGet("/health", Endpoints.HealthAsync);
 app.Run();

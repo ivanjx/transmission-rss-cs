@@ -11,7 +11,7 @@
 <body>
     <header class="topbar">
         <a class="brand" href="/"><span class="mark">TR</span><strong>Transmission RSS</strong></a>
-        <div class="top-actions"><a class="button secondary" href="/downloads">Downloads</a><form method="post" action="/poll"><button class="button secondary" type="submit"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" /></svg>Poll now</button></form></div>
+        <nav class="topbar-actions"><a href="/downloads">Downloads</a><a href="/poll">Poll now</a></nav>
     </header>
     <main class="shell">
         @if (!string.IsNullOrWhiteSpace(Model.Notice))

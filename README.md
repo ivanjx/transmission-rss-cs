@@ -18,7 +18,7 @@ Alternatively, use the included Compose file:
 docker compose up -d
 ```
 
-Each feed owns its URL, deduplication mode, custom link field (such as `nyaa_infohash`), and any number of rules. A rule has case-insensitive include and exclude term lists, a download directory, and an optional paused-add override. Every include term must appear in the title; a title is skipped when any exclude term appears. The latest 1,000 successful downloads are recorded in SQLite, can be managed from the UI, and will not be added twice unless removed from the history.
+Each feed owns its URL, deduplication mode, custom link field (such as `nyaa:infoHash`), and any number of rules. A rule has case-insensitive include and exclude term lists, a download directory, and an optional paused-add override. Every include term must appear in the title; a title is skipped when any exclude term appears. The latest 1,000 successful downloads are recorded in SQLite, can be managed from the UI, and will not be added twice unless removed from the history.
 
 ## Local development
 

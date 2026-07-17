@@ -6,6 +6,7 @@ a { color:inherit; }
 .topbar>div,.brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
 .topbar-actions { display:flex; align-items:center; gap:18px; }
 .topbar-actions>a,.topbar>a { color:var(--muted); text-decoration:none; }
+.topbar-actions>a:hover,.topbar>a:hover { color:var(--text); }
 .mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font-weight:900; letter-spacing:-1px; }
 .shell { max-width:1168px; margin:0 auto; padding:54px 24px 80px; }
 .narrow { max-width:790px; }
