@@ -16,15 +16,15 @@ RUN apt-get update \
     && apt-get install --no-install-recommends --yes curl \
     && rm -rf /var/lib/apt/lists/*
 
-ENV ASPNETCORE_HTTP_PORTS=8080 \
+ENV ASPNETCORE_HTTP_PORTS=8354 \
     Database__Path=/data/transmission-rss.db
 WORKDIR /app
 VOLUME ["/data"]
-EXPOSE 8080
+EXPOSE 8354
 
 COPY --from=build --chown=$APP_UID:$APP_UID /app/ ./
 USER $APP_UID
 
-HEALTHCHECK --interval=30s --timeout=20s --start-period=10s --retries=3 CMD ["curl", "--fail", "--silent", "--show-error", "--max-time", "15", "http://127.0.0.1:8080/health"]
+HEALTHCHECK --interval=30s --timeout=20s --start-period=10s --retries=3 CMD ["curl", "--fail", "--silent", "--show-error", "--max-time", "15", "http://127.0.0.1:8354/health"]
 
 ENTRYPOINT ["./TransmissionRss"]
