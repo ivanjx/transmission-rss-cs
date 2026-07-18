@@ -64,16 +64,13 @@ label small { color:var(--muted); font-weight:400; }
 .editor h1 { font-size:40px; }
 .danger-zone { border-top:1px solid var(--line); margin-top:0; padding-top:20px; }
 .download-list { display:grid; }
-.download { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:18px; align-items:center; padding:15px 4px; border-top:1px solid var(--line); }
+.download { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:center; padding:15px 4px; border-top:1px solid var(--line); }
 .download-main { display:grid; min-width:0; }
 .download-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.download-main small,.torrent-link { color:var(--muted); font-size:12px; }
-.torrent-link { display:inline-flex; align-items:center; gap:5px; text-decoration:none; }
-.torrent-link:hover { color:var(--accent); }
+.download-main small { color:var(--muted); font-size:12px; }
 .icon { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .rule-arrow { color:var(--muted); }
-.torrent-link .icon { width:14px; height:14px; }
 .icon-button { display:inline-grid; place-items:center; border:0; border-radius:8px; background:transparent; color:var(--danger); cursor:pointer; padding:8px; }
 .icon-button:hover { background:#402121; }
 .icon-button:focus-visible { outline:2px solid var(--danger); outline-offset:2px; }
-@media (max-width:760px) { .grid { grid-template-columns:1fr; } .span-two { grid-column:auto; } .fields-two,.checks { grid-template-columns:1fr; } .section-heading,.feed-heading { align-items:flex-start; flex-direction:column; } .section-heading-actions { flex-direction:column-reverse; align-items:flex-end; } .rule { grid-template-columns:12px 1fr 18px; } .rule-meta { display:none; } .download { grid-template-columns:minmax(0,1fr) auto; } .torrent-link { display:none; } }
+@media (max-width:760px) { .grid { grid-template-columns:1fr; } .span-two { grid-column:auto; } .fields-two,.checks { grid-template-columns:1fr; } .mark { display:none; } .section-heading,.feed-heading { align-items:flex-start; flex-direction:column; } .section-heading h2 { margin-bottom:4px; } .feed-heading { gap:8px; } .section-heading > .button,.section-heading > form { margin-bottom:18px; } .section-heading-actions { flex-direction:row; align-items:stretch; width:100%; } .section-heading-actions .button { flex:1; } .rule { grid-template-columns:12px 1fr 18px; } .rule-meta { display:none; } }
