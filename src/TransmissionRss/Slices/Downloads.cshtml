@@ -47,7 +47,6 @@
                             <small>@torrent.RuleName · @torrent.DownloadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") · @(torrent.AddPaused ? "Paused" : "Started")</small>
                             <small>Destination: @(string.IsNullOrWhiteSpace(torrent.DownloadDirectory) ? "Transmission default" : torrent.DownloadDirectory)</small>
                         </span>
-                        <a class="torrent-link" href="@torrent.TorrentUrl" target="_blank" rel="noreferrer">Torrent link<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></a>
                         <form method="post" action="/downloads/delete" onsubmit="return confirm('Delete this downloaded torrent? It may be downloaded again on the next poll.')">
                             <input name="ruleId" type="hidden" value="@torrent.RuleId" />
                             <input name="uniqueId" type="hidden" value="@torrent.UniqueId" />
