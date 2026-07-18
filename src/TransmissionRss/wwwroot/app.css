@@ -72,6 +72,8 @@ label small { color:var(--muted); font-weight:400; }
 .download-main { display:grid; min-width:0; }
 .download-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .download-main small { color:var(--muted); font-size:12px; }
+.pagination { display:flex; align-items:center; justify-content:center; gap:16px; margin-top:20px; }
+.pagination span { color:var(--muted); font-size:13px; }
 .icon { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .rule-arrow { color:var(--muted); }
 .icon-button { display:inline-grid; place-items:center; border:0; border-radius:8px; background:transparent; color:var(--danger); cursor:pointer; padding:8px; }

@@ -27,6 +27,7 @@ public sealed record FeedRule(
     bool Enabled);
 
 public sealed record DownloadedTorrent(
+    long Id,
     string RuleId,
     string RuleName,
     string UniqueId,
@@ -36,9 +37,22 @@ public sealed record DownloadedTorrent(
     string DownloadDirectory,
     bool AddPaused);
 
+public sealed record DownloadedTorrentsPage(
+    IReadOnlyList<DownloadedTorrent> Torrents,
+    int Page,
+    int PageCount,
+    long? NextId,
+    long? PreviousId);
+
 public sealed record DashboardModel(AppSettings Settings, IReadOnlyList<Feed> Feeds, string? Notice);
 
-public sealed record DownloadsModel(IReadOnlyList<DownloadedTorrent> Torrents, string? Notice);
+public sealed record DownloadsModel(
+    IReadOnlyList<DownloadedTorrent> Torrents,
+    int Page,
+    int PageCount,
+    long? NextId,
+    long? PreviousId,
+    string? Notice);
 
 public sealed record FeedEditorModel(Feed Feed, bool IsNew, string? Error);
 

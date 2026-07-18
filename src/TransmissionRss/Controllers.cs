@@ -3,6 +3,7 @@ namespace TransmissionRss;
 public static class Controllers
 {
     private const int HealthCheckTimeoutSeconds = 10;
+    private const int DownloadsPageSize = 100;
 
     public static async Task<IResult> HealthAsync(
         HttpContext context,
@@ -124,11 +125,28 @@ public static class Controllers
 
     public static async Task<IResult> DownloadsAsync(HttpContext context, AppRepository repository)
     {
-        var result = await repository.GetDownloadedTorrentsAsync(context.RequestAborted);
+        var requestedPage = int.TryParse(context.Request.Query["page"].ToString(), out var parsedPage) ? parsedPage : 1;
+        long? beforeId = long.TryParse(context.Request.Query["before"].ToString(), out var parsedBeforeId) ?
+            parsedBeforeId :
+            null;
+        long? afterId = long.TryParse(context.Request.Query["after"].ToString(), out var parsedAfterId) ?
+            parsedAfterId :
+            null;
+        var result = await repository.GetDownloadedTorrentsAsync(
+            requestedPage,
+            DownloadsPageSize,
+            beforeId,
+            afterId,
+            context.RequestAborted);
         return result switch
         {
-            RepositoryResult<IReadOnlyList<DownloadedTorrent>> torrents => Slices.Downloads.Create(new(
-                torrents.Value, context.Request.Query["notice"].FirstOrDefault())),
+            RepositoryResult<DownloadedTorrentsPage> page => Slices.Downloads.Create(new(
+                page.Value.Torrents,
+                page.Value.Page,
+                page.Value.PageCount,
+                page.Value.NextId,
+                page.Value.PreviousId,
+                context.Request.Query["notice"].FirstOrDefault())),
             CanceledRepositoryResult => Results.StatusCode(StatusCodes.Status499ClientClosedRequest),
             _ => Results.Problem("Transmission RSS could not load downloaded torrent history.", statusCode: 500)
         };

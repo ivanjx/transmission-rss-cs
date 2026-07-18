@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -202,6 +203,43 @@ public sealed class ServerTests : IAsyncLifetime
         Assert.Contains("Example torrent", downloads);
         Assert.Contains("/downloads/anime", downloads);
         Assert.Contains("name=\"ruleId\" type=\"hidden\" value=\"rule\"", downloads);
+    }
+
+    [Fact]
+    public async Task DownloadedTorrentHistoryIsPaginated()
+    {
+        var repository = _factory.Services.GetRequiredService<AppRepository>();
+        var feed = new Feed("pagination-feed", "https://example.com/pagination", "link", false, []);
+        var rule = new FeedRule("pagination-rule", feed.Id, "Pagination", [], [], string.Empty, null, true);
+        Assert.IsType<SuccessRepositoryResult>(await repository.SaveFeedAsync(feed));
+        Assert.IsType<SuccessRepositoryResult>(await repository.SaveRuleAsync(rule));
+
+        for (var index = 1; index <= 101; index++)
+        {
+            Assert.IsType<SuccessRepositoryResult>(await repository.MarkSeenAsync(
+                rule,
+                $"item-{index}",
+                $"Torrent {index}",
+                $"https://example.com/{index}.torrent",
+                false));
+        }
+
+        var firstPage = await _client.GetStringAsync("/downloads?page=1");
+        Assert.Contains("Page 1 of 2", firstPage);
+        Assert.Equal(100, firstPage.Split("<strong>Torrent ", StringSplitOptions.None).Length - 1);
+
+        var nextPageUrl = Regex.Match(firstPage, "href=\"(?<url>/downloads\\?page=2&amp;before=\\d+)\"").Groups["url"].Value;
+        Assert.NotEmpty(nextPageUrl);
+        var secondPage = await _client.GetStringAsync(nextPageUrl.Replace("&amp;", "&"));
+        Assert.Contains("Page 2 of 2", secondPage);
+        Assert.Equal(1, secondPage.Split("<strong>Torrent ", StringSplitOptions.None).Length - 1);
+        Assert.Contains("<strong>Torrent 1</strong>", secondPage);
+
+        var previousPageUrl = Regex.Match(secondPage, "href=\"(?<url>/downloads\\?page=1&amp;after=\\d+)\"").Groups["url"].Value;
+        Assert.NotEmpty(previousPageUrl);
+        var previousPage = await _client.GetStringAsync(previousPageUrl.Replace("&amp;", "&"));
+        Assert.Contains("Page 1 of 2", previousPage);
+        Assert.Contains("<strong>Torrent 101</strong>", previousPage);
     }
 
     [Fact]

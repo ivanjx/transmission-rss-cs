@@ -4,7 +4,7 @@ namespace TransmissionRss;
 
 public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepository> logger)
 {
-    private const int DownloadHistoryLimit = 1000;
+    private const int DownloadHistoryLimit = 10000;
     private readonly string _connectionString = BuildConnectionString(configuration);
 
     public async Task<RepositoryResult> InitializeAsync(CancellationToken cancellationToken = default)
@@ -228,30 +228,92 @@ public sealed class AppRepository(IConfiguration configuration, ILogger<AppRepos
             return new SuccessRepositoryResult();
         }, $"Failed to record downloaded torrent for feed rule {rule.Id}", cancellationToken);
 
-    public Task<RepositoryResult> GetDownloadedTorrentsAsync(CancellationToken cancellationToken = default) =>
+    public Task<RepositoryResult> GetDownloadedTorrentsAsync(
+        int requestedPage,
+        int pageSize,
+        long? beforeId,
+        long? afterId,
+        CancellationToken cancellationToken = default) =>
         ExecuteRepositoryAsync(async () =>
         {
-            var torrents = new List<DownloadedTorrent>();
             await using var connection = await OpenAsync(cancellationToken);
-            await using var command = connection.CreateCommand();
-            command.CommandText = """
-                SELECT seen.rule_id, COALESCE(seen.rule_name, rules.name), seen.unique_id, seen.title, seen.torrent_url,
-                    seen.seen_at, COALESCE(seen.download_directory, ''), COALESCE(seen.add_paused, 0)
+            await using var countCommand = connection.CreateCommand();
+            countCommand.CommandText = """
+                SELECT COUNT(*)
                 FROM seen_items AS seen
                 INNER JOIN rules ON rules.id = seen.rule_id
                 WHERE seen.title IS NOT NULL AND seen.torrent_url IS NOT NULL
-                ORDER BY seen.seen_at DESC, seen.rowid DESC
                 """;
+            var totalCount = (long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+            var pageCount = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+            var page = beforeId.HasValue || afterId.HasValue ?
+                Math.Clamp(requestedPage, 1, pageCount) :
+                1;
+
+            var torrents = new List<DownloadedTorrent>();
+            await using var command = connection.CreateCommand();
+
+            if (afterId.HasValue)
+            {
+                command.CommandText = """
+                    SELECT seen.rowid, seen.rule_id, COALESCE(seen.rule_name, rules.name), seen.unique_id, seen.title, seen.torrent_url,
+                        seen.seen_at, COALESCE(seen.download_directory, ''), COALESCE(seen.add_paused, 0)
+                    FROM seen_items AS seen
+                    INNER JOIN rules ON rules.id = seen.rule_id
+                    WHERE seen.title IS NOT NULL AND seen.torrent_url IS NOT NULL AND seen.rowid > $afterId
+                    ORDER BY seen.rowid ASC
+                    LIMIT $pageSize
+                    """;
+                command.Parameters.AddWithValue("$afterId", afterId.Value);
+            }
+            else if (beforeId.HasValue)
+            {
+                command.CommandText = """
+                    SELECT seen.rowid, seen.rule_id, COALESCE(seen.rule_name, rules.name), seen.unique_id, seen.title, seen.torrent_url,
+                        seen.seen_at, COALESCE(seen.download_directory, ''), COALESCE(seen.add_paused, 0)
+                    FROM seen_items AS seen
+                    INNER JOIN rules ON rules.id = seen.rule_id
+                    WHERE seen.title IS NOT NULL AND seen.torrent_url IS NOT NULL AND seen.rowid < $beforeId
+                    ORDER BY seen.rowid DESC
+                    LIMIT $pageSize
+                    """;
+                command.Parameters.AddWithValue("$beforeId", beforeId.Value);
+            }
+            else
+            {
+                command.CommandText = """
+                    SELECT seen.rowid, seen.rule_id, COALESCE(seen.rule_name, rules.name), seen.unique_id, seen.title, seen.torrent_url,
+                        seen.seen_at, COALESCE(seen.download_directory, ''), COALESCE(seen.add_paused, 0)
+                    FROM seen_items AS seen
+                    INNER JOIN rules ON rules.id = seen.rule_id
+                    WHERE seen.title IS NOT NULL AND seen.torrent_url IS NOT NULL
+                    ORDER BY seen.rowid DESC
+                    LIMIT $pageSize
+                    """;
+            }
+            
+            command.Parameters.AddWithValue("$pageSize", pageSize);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             while (await reader.ReadAsync(cancellationToken))
             {
                 torrents.Add(new(
-                    reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                    reader.GetString(4), DateTimeOffset.Parse(reader.GetString(5)), reader.GetString(6), reader.GetBoolean(7)));
+                    reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
+                    reader.GetString(4), reader.GetString(5), DateTimeOffset.Parse(reader.GetString(6)),
+                    reader.GetString(7), reader.GetBoolean(8)));
             }
 
-            return new RepositoryResult<IReadOnlyList<DownloadedTorrent>>(torrents);
+            if (afterId.HasValue)
+            {
+                torrents.Reverse();
+            }
+
+            return new RepositoryResult<DownloadedTorrentsPage>(new(
+                torrents,
+                page,
+                pageCount,
+                torrents.Count == pageSize ? torrents[^1].Id : null,
+                page > 1 && torrents.Count > 0 ? torrents[0].Id : null));
         }, "Failed to read downloaded torrent history", cancellationToken);
 
     public Task<RepositoryResult> DeleteDownloadedTorrentAsync(
