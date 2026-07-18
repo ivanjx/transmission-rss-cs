@@ -18,10 +18,6 @@
         {
             <div class="notice">@Model.Notice</div>
         }
-        <section class="hero">
-            <div><p class="eyebrow">HISTORY</p><h1>Downloaded torrents</h1><p>Successful downloads are kept for deduplication. Removing one allows it to trigger again.</p></div>
-        </section>
-
         <section class="panel">
             <div class="section-heading">
                 <div><p class="eyebrow">RECENT</p><h2>Torrents sent to Transmission</h2></div>
@@ -56,6 +52,7 @@
                 }
                 </div>
             }
+            <p class="panel-note">Downloads are kept to prevent duplicates. Removing one allows it to download again.</p>
         </section>
     </main>
 </body>
